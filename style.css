@@ -1,4 +1,11 @@
 	.box {
+		z-index: 1;
 		position: relative;
-		top: -700px;
+		top: 50px;
+		margin-bottom: -1100px;
+		pointer-events: none;
 }
+	.other {
+		z-index: 20;
+}
+	

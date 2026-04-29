@@ -2,88 +2,152 @@
 <html lang="ja">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Tihatan関連のさまざまなリンクです</title> <style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tihatan関連のさまざまなリンクです</title>
+    
+    <style>
+        /* ページ全体の基本設定 */
         body {
-            text-align: center; /* 画面全体の中央揃え（旧 center タグの代わり） */
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #fafafa;
-            color: #333;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background: linear-gradient(135deg, #1f1c2c 0%, #000000 100%); /* おしゃれな暗めのグラデーション */
+            color: #ffffff;
             margin: 0;
-            padding: 20px;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
-        .main-title {
-            font-size: 2.2em; /* 旧 font size=7 の代わり */
+
+        /* リンクをまとめる枠 */
+        .container {
+            width: 100%;
+            max-width: 450px; /* スマホやPCで見やすい幅に固定 */
+        }
+
+        /* 一番上のタイトル */
+        h1 {
             color: #ffd700;
-            font-weight: bold;
+            text-align: center;
+            font-size: 1.6em;
             margin-bottom: 30px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.1); /* 文字が見やすいように薄く影を追加 */
+            text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3); /* 少し光るエフェクト */
         }
-        .link-block {
-            margin-bottom: 25px; /* 各リンクの間の余白 */
+
+        /* 各リンクのボタン（カード風） */
+        .link-card {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1); /* 半透明の白枠 */
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px; /* 角を丸く */
+            padding: 12px;
+            margin-bottom: 15px;
+            text-decoration: none;
+            color: #ffffff;
+            transition: all 0.3s ease; /* ふわっと動くアニメーション */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        .link-block img {
-            border-radius: 8px; /* 画像の角を少し丸くしておしゃれに */
-            transition: opacity 0.3s;
+
+        /* マウスを乗せた時（スマホでタップした時）の動き */
+        .link-card:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px); /* 少し上に浮く */
         }
-        .link-block a:hover img {
-            opacity: 0.8; /* マウスを乗せると少しフワッと透ける演出 */
+
+        /* カード内の画像 */
+        .link-card img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 10px; /* 画像の角も丸く */
+            margin-right: 15px;
         }
+
+        /* カード内の文字 */
         .link-text {
-            display: block;
-            margin-top: 5px;
             font-weight: bold;
-            text-decoration: none;
-            color: #333;
-        }
-        .wishlist {
-            display: inline-block;
-            margin: 10px 0 20px 0;
             font-size: 1.1em;
-            color: #007185; /* Amazon風の色 */
-            text-decoration: none;
-            font-weight: bold;
+            line-height: 1.4;
         }
-        .nenkin-title {
-            font-size: 2em; /* 旧 font size=7 の代わり */
+
+        /* 年金シミュレーター用の特別な文字色 */
+        .nenkin-text {
             color: #fa8072;
-            font-weight: bold;
-            margin-top: 10px;
+            font-size: 1.1em;
+            text-shadow: 0 1px 5px rgba(250, 128, 114, 0.3);
+        }
+        .nenkin-sub {
+            font-size: 0.7em;
+            color: #ccc;
+            font-weight: normal;
+        }
+
+        /* ほしいものリスト専用ボタン（Amazon風カラー） */
+        .amazon-btn {
             display: block;
+            text-align: center;
+            background: linear-gradient(to right, #ff9900, #ffb84d);
+            color: #111;
+            font-weight: bold;
+            font-size: 1.1em;
+            padding: 16px;
+            border-radius: 16px;
+            text-decoration: none;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(255, 153, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        .amazon-btn:hover {
+            transform: translateY(-3px);
+            filter: brightness(1.1);
+        }
+
+        /* ニコニコの埋め込み枠 */
+        .iframe-wrapper {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 16px;
+        }
+        .iframe-wrapper iframe {
+            border-radius: 8px;
+            max-width: 100%;
         }
     </style>
-    </head>
+</head>
 
 <body>
-    <div class="main-title">Tihatan関連のさまざまなリンクです</div>
+    <div class="container">
+        <h1>Tihatan関連のさまざまなリンクです</h1>
 
-    <div class="link-block">
-        <a href="https://misskey.io/@tihatan_">
-            <img src="https://github.com/Tihatan/Tihatan.github.io/assets/133956936/a37eb738-37b3-4676-8878-64bc101a0cfd" width="200" height="140" alt="Misskey用アイコン">
+        <a href="https://misskey.io/@tihatan_" class="link-card">
+            <img src="https://github.com/Tihatan/Tihatan.github.io/assets/133956936/a37eb738-37b3-4676-8878-64bc101a0cfd" alt="Misskey用アイコン">
+            <div class="link-text">Misskey.io【Tihatan_】</div>
         </a>
-        <a href="https://misskey.io/@tihatan_" class="link-text">Misskey.io【Tihatan_】</a>
-    </div>
 
-    <div class="link-block">
-        <a href="https://twitter.com/tihatan_">
-            <img src="https://github.com/Tihatan/Tihatan.github.io/assets/133956936/1d8d629d-7bb6-44c9-a958-51991cb657c4" width="140" height="140" alt="Twitter用アイコン">
+        <a href="https://twitter.com/tihatan_" class="link-card">
+            <img src="https://github.com/Tihatan/Tihatan.github.io/assets/133956936/1d8d629d-7bb6-44c9-a958-51991cb657c4" alt="Twitter用アイコン">
+            <div class="link-text">Twitter【Tihatan_】</div>
         </a>
-        <a href="https://twitter.com/tihatan_" class="link-text">Twitter【Tihatan_】</a>
-    </div>
 
-    <div class="link-block">
-        <iframe width="320" height="160" src="https://ext.nicovideo.jp/thumb_user/55482857" scrolling="no" style="border:solid 1px #CCC; border-radius: 8px;" frameborder="0">チハたん</iframe>
-    </div>
+        <div class="iframe-wrapper">
+            <iframe width="320" height="160" src="https://ext.nicovideo.jp/thumb_user/55482857" scrolling="no" style="border:solid 1px #CCC;" frameborder="0">チハたん</iframe>
+        </div>
 
-    <div class="link-block">
-        <a href="https://www.amazon.jp/hz/wishlist/ls/26922EUVWX7QQ?ref_=wl_share" target="_blank" class="wishlist">ほしいものリストです</a>
-    </div>
-
-    <div class="link-block">
-        <a href="https://Tihatan.github.io/nenkin%20sim.html">
-            <img src="https://github.com/Tihatan/Tihatan.github.io/assets/133956936/239250184-ab02252e-1c59-48fc-90f4-769b7ef55807" width="200" height="140" alt="いかなる損害が生じても責任は取りません。私が便利に暮らしたいだけなの">
+        <a href="https://www.amazon.jp/hz/wishlist/ls/26922EUVWX7QQ?ref_=wl_share" target="_blank" class="amazon-btn">
+            📦 ほしいものリストです
         </a>
-        <a href="https://Tihatan.github.io/nenkin%20sim.html" class="nenkin-title">年金追納額シミュレーター<br><span style="font-size:0.6em; color:#666;">(個人利用)</span></a>
-    </div>
 
+        <a href="https://Tihatan.github.io/nenkin%20sim.html" class="link-card">
+            <img src="https://github.com/Tihatan/Tihatan.github.io/assets/133956936/239250184-ab02252e-1c59-48fc-90f4-769b7ef55807" alt="年金シミュレーター画像">
+            <div class="link-text nenkin-text">
+                年金追納額シミュレーター<br>
+                <span class="nenkin-sub">(個人利用)</span>
+            </div>
+        </a>
+    </div>
 </body>
 </html>

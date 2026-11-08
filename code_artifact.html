@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>年末調整 所得金額・基礎控除額 計算ツール（国税庁基礎控除申告書準拠）</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans JP"', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+          },
+          colors: {
+            nta: {
+              50: '#f0f7f4',
+              100: '#dceee5',
+              200: '#bce0cf',
+              300: '#8fc9b0',
+              400: '#5eab8d',
+              500: '#3d8f71',
+              600: '#2d735a',
+              700: '#255c49',
+              800: '#20493b',
+              900: '#1b3c31',
+            },
+            navy: {
+              800: '#1e293b',
+              900: '#0f172a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      background-color: #f4f7f6;
+      color: #1e293b;
+    }
+    /* Custom styling for official tax form preview */
+    .tax-form-paper {
+      background-color: #ffffff;
+      border: 2px solid #2d735a;
+      box-shadow: 0 10px 25px -5px rgba(45, 115, 90, 0.12), 0 8px 10px -6px rgba(45, 115, 90, 0.08);
+    }
+    .tax-form-cell-header {
+      background-color: #e6f2ed;
+      border-color: #2d735a;
+      color: #1b3c31;
+    }
+    .tax-form-border {
+      border-color: #2d735a;
+    }
+    /* Custom range slider */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      background: #dceee5;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #2d735a;
+      cursor: pointer;
+      border: 3px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+      background: #20493b;
+    }
+    /* Smooth accordion transition */
+    .accordion-content {
+      transition: max-height 0.3s ease-in-out, opacity 0.25s ease-in-out;
+      overflow: hidden;
+    }
+    /* Active row pulse in speed table */
+    .active-bracket-row {
+      background-color: #fef9c3 !important;
+      outline: 2px solid #eab308;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Header -->
+  <header class="bg-gradient-to-r from-nta-800 via-nta-700 to-slate-800 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center text-emerald-200 border border-white/20 shrink-0">
+          <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-semibold uppercase tracking-wider bg-emerald-500/30 border border-emerald-300/40 text-emerald-100 px-2 py-0.5 rounded-md">
+              国税庁「基礎控除申告書」完全準拠
+            </span>
+            <span id="headerYearBadge" class="text-xs font-bold bg-amber-400 text-slate-900 px-2 py-0.5 rounded-md">
+              令和8年分（2026年）最新改正対応
+            </span>
+          </div>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight mt-0.5">
+            年末調整 所得金額・基礎控除額 計算ツール
+          </h1>
+        </div>
+      </div>
+
+      <!-- Year Selector Tabs in Header -->
+      <div class="flex items-center bg-slate-900/40 p-1 rounded-xl border border-white/15 self-start sm:self-auto">
+        <button type="button" onclick="setTaxYear('r8')" id="yearBtn-r8"
+          class="year-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-nta-800 shadow-sm">
+          令和8年分 <span class="hidden md:inline text-[11px] font-normal">(2026)</span>
+        </button>
+        <button type="button" onclick="setTaxYear('r7')" id="yearBtn-r7"
+          class="year-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-emerald-100 hover:text-white">
+          令和7年分 <span class="hidden md:inline text-[11px] font-normal">(2025)</span>
+        </button>
+        <button type="button" onclick="setTaxYear('r6')" id="yearBtn-r6"
+          class="year-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-emerald-100 hover:text-white">
+          令和6年以前 <span class="hidden md:inline text-[11px] font-normal">(〜2024)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tax Reform Notice Banner -->
+  <div class="bg-nta-50 border-b border-nta-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-start sm:items-center justify-between gap-3 text-xs sm:text-sm text-nta-900">
+      <div class="flex items-start sm:items-center gap-2">
+        <i class="fa-solid fa-circle-info text-nta-600 mt-0.5 sm:mt-0 shrink-0"></i>
+        <p id="yearRuleBannerText">
+          <strong>【令和8年分（2026年）の計算ルール適用中】</strong> 給与所得控除の最低保障額が<strong>74万円</strong>、基礎控除が最大<strong>104万円</strong>（合計所得489万円以下）に引き上げられた最新計算表で算出しています。
+        </p>
+      </div>
+      <button type="button" onclick="scrollToSection('speedTableSection')" class="shrink-0 text-nta-700 hover:text-nta-900 font-semibold underline underline-offset-2 flex items-center gap-1">
+        <span>速算表を見る</span>
+        <i class="fa-solid fa-arrow-down text-[10px]"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- LEFT COLUMN: INPUTS & CALCULATORS (7 cols on lg) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- Section 1: Salary Revenue Input -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="bg-nta-700 text-white px-5 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-full bg-white text-nta-800 font-bold text-xs flex items-center justify-center">1</span>
+              <h2 class="font-bold text-base sm:text-lg">① 給与所得の収入金額（額面年収の見積額）</h2>
+            </div>
+            <span class="text-xs bg-nta-800/80 px-2.5 py-1 rounded-full text-emerald-100 border border-white/15">
+              源泉徴収票の「支払金額」
+            </span>
+          </div>
+
+          <div class="p-5 sm:p-6 space-y-5">
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              今年1月〜12月中に支払われる<strong>給与・賞与の額面合計額（税金や社会保険料が引かれる前の金額）</strong>を入力してください。※非課税の通勤手当は含みません。
+            </p>
+
+            <!-- Main Salary Input Box -->
+            <div>
+              <label for="salaryInputDisplay" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                給与等の収入金額の合計額 <span class="text-nta-600 font-normal">（1円単位で厳密計算）</span>
+              </label>
+              <div class="relative flex items-center">
+                <span class="absolute left-4 text-slate-400 font-bold text-lg select-none">¥</span>
+                <input
+                  type="text"
+                  id="salaryInputDisplay"
+                  inputmode="numeric"
+                  value="4,500,000"
+                  placeholder="例: 4,500,000"
+                  oninput="handleFormattedInput(this, 'salary')"
+                  onblur="formatInputOnBlur(this, 'salary')"
+                  class="w-full pl-10 pr-24 py-3.5 text-2xl sm:text-3xl font-bold text-slate-900 bg-slate-50 border-2 border-slate-300 rounded-xl focus:outline-none focus:border-nta-600 focus:bg-white transition-all font-mono"
+                >
+                <div class="absolute right-3 flex items-center gap-1.5">
+                  <button type="button" onclick="clearSalary()" title="クリア" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/60 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                  <span class="text-base font-bold text-slate-600 pr-1">円</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between mt-1.5 text-xs text-slate-500">
+                <span id="salaryManYenReading" class="font-medium text-nta-700">約 450万 円</span>
+                <span>※複数から給与がある場合はすべての合算額</span>
+              </div>
+            </div>
+
+            <!-- Slider -->
+            <div class="pt-1">
+              <div class="flex justify-between text-[11px] font-medium text-slate-400 mb-1.5">
+                <span>0円</span>
+                <span>300万円</span>
+                <span>600万円</span>
+                <span>900万円</span>
+                <span>1,200万円+</span>
+              </div>
+              <input
+                type="range"
+                id="salarySlider"
+                min="0"
+                max="12000000"
+                step="10000"
+                value="4500000"
+                oninput="handleSliderChange(this.value)"
+                class="w-full"
+              >
+            </div>
+
+            <!-- Quick Preset Buttons -->
+            <div>
+              <span class="block text-xs font-semibold text-slate-500 mb-2">クイック入力（よくある年収ライン・壁の確認にも便利）：</span>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="setSalary(1030000)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-nta-100 text-slate-700 hover:text-nta-800 rounded-lg border border-slate-200 transition">103万円</button>
+                <button type="button" onclick="setSalary(1600000)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-nta-100 text-slate-700 hover:text-nta-800 rounded-lg border border-slate-200 transition">160万円</button>
+                <button type="button" onclick="setSalary(1780000)" class="px-2.5 py-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-nta-800 rounded-lg border border-emerald-300 transition">178万円</button>
+                <button type="button" onclick="setSalary(2195000)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-nta-100 text-slate-700 hover:text-nta-800 rounded-lg border border-slate-200 transition">219.5万円</button>
+                <button type="button" onclick="setSalary(3000000)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-nta-100 text-slate-700 hover:text-nta-800 rounded-lg border border-slate-200 transition">300万円</button>
+                <button type="button" onclick="setSalary(4500000)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-nta-100 text-slate-700 hover:text-nta-800 rounded-lg border border-slate-200 transition">450万円</button>
+                <button type="button" onclick="setSalary(6000000)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-nta-100 text-slate-700 hover:text-nta-800 rounded-lg border border-slate-200 transition">600万円</button>
+                <button type="button" onclick="setSalary(8500000)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-nta-100 text-slate-700 hover:text-nta-800 rounded-lg border border-slate-200 transition">850万円</button>
+                <button type="button" onclick="setSalary(9500000)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-nta-100 text-slate-700 hover:text-nta-800 rounded-lg border border-slate-200 transition">950万円</button>
+                <button type="button" onclick="setSalary(11000000)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-nta-100 text-slate-700 hover:text-nta-800 rounded-lg border border-slate-200 transition">1,100万円</button>
+              </div>
+            </div>
+
+            <!-- Collapsible: Simple Annual Salary Estimator -->
+            <div class="border border-nta-200 rounded-xl bg-nta-50/50 overflow-hidden">
+              <button
+                type="button"
+                onclick="toggleAccordion('salaryEstimatorBox', 'salaryEstimatorChevron')"
+                class="w-full px-4 py-3 flex items-center justify-between text-left text-xs sm:text-sm font-bold text-nta-800 hover:bg-nta-100/60 transition"
+              >
+                <span class="flex items-center gap-2">
+                  <i class="fa-solid fa-calculator text-nta-600"></i>
+                  月給・賞与から計算する「年収かんたん見積もり補助ツール」
+                </span>
+                <i id="salaryEstimatorChevron" class="fa-solid fa-chevron-down text-xs text-nta-600 transition-transform duration-200"></i>
+              </button>
+
+              <div id="salaryEstimatorBox" class="hidden px-4 pb-4 pt-2 border-t border-nta-200/70 space-y-3 bg-white">
+                <p class="text-xs text-slate-500">
+                  毎月の総支給額（基本給＋残業代＋各種課税手当）と今年の賞与合計から年間の額面収入を試算します。
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">月額総支給（額面）</label>
+                    <div class="relative">
+                      <input type="number" id="estMonthly" value="300000" min="0" step="1000" oninput="updateSalaryEstimator()"
+                        class="w-full pl-3 pr-8 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:border-nta-600">
+                      <span class="absolute right-2.5 top-2 text-xs text-slate-400">円</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">支給月数</label>
+                    <div class="relative">
+                      <input type="number" id="estMonths" value="12" min="1" max="12" step="1" oninput="updateSalaryEstimator()"
+                        class="w-full pl-3 pr-9 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:border-nta-600">
+                      <span class="absolute right-2.5 top-2 text-xs text-slate-400">ヶ月</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">年間賞与（ボーナス合計）</label>
+                    <div class="relative">
+                      <input type="number" id="estBonus" value="900000" min="0" step="10000" oninput="updateSalaryEstimator()"
+                        class="w-full pl-3 pr-8 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:border-nta-600">
+                      <span class="absolute right-2.5 top-2 text-xs text-slate-400">円</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                  <div class="text-xs text-slate-600">
+                    試算結果：<strong id="estTotalPreview" class="text-base font-mono text-nta-800">4,500,000</strong> 円
+                  </div>
+                  <button type="button" onclick="applyEstimatedSalary()"
+                    class="px-3.5 py-1.5 bg-nta-600 hover:bg-nta-700 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> この金額を収入金額に反映する
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Income Amount Adjustment Deduction (所得金額調整控除) & Specific Expenditure -->
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="childSpecialDeductionCheck"
+                    onchange="recalculateAll()"
+                    class="mt-1 w-4 h-4 text-nta-600 rounded border-slate-300 focus:ring-nta-500 cursor-pointer"
+                  >
+                  <div>
+                    <label for="childSpecialDeductionCheck" class="text-xs sm:text-sm font-bold text-slate-800 cursor-pointer flex items-center gap-1.5 flex-wrap">
+                      <span>所得金額調整控除（子ども・特別障害者等）を適用する</span>
+                      <span id="adjustmentEligibilityBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-600">
+                        年収850万円超で対象
+                      </span>
+                    </label>
+                    <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                      給与収入が<strong>850万円を超え</strong>、かつ「23歳未満の扶養親族がいる」「本人・同一生計配偶者・扶養親族のいずれかが特別障害者」に該当する場合、最大15万円が給与所得から控除されます。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Advanced Option Accordion: Dual Pension & Specific Expenditure -->
+              <div class="pt-1 border-t border-slate-200/80">
+                <button
+                  type="button"
+                  onclick="toggleAccordion('advancedSalaryDeductionBox', 'advancedSalaryChevron')"
+                  class="text-xs font-semibold text-slate-600 hover:text-nta-700 flex items-center gap-1.5"
+                >
+                  <i id="advancedSalaryChevron" class="fa-solid fa-chevron-right text-[10px] transition-transform duration-200"></i>
+                  <span>公的年金等との双方受給・特定支出控除がある場合はこちら（オプション）</span>
+                </button>
+
+                <div id="advancedSalaryDeductionBox" class="hidden mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3.5 rounded-lg border border-slate-200">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                      公的年金等に係る所得金額調整控除
+                    </label>
+                    <div class="relative">
+                      <input type="number" id="pensionAdjustmentInput" value="0" min="0" max="100000" step="1000" oninput="recalculateAll()"
+                        class="w-full pl-3 pr-8 py-1.5 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:border-nta-600">
+                      <span class="absolute right-2.5 top-1.5 text-xs text-slate-400">円</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400">※給与と年金の双方があり合計10万円超の場合（上限10万円）</span>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                      特定支出控除額（確定申告等）
+                    </label>
+                    <div class="relative">
+                      <input type="number" id="specificExpenseInput" value="0" min="0" step="1000" oninput="recalculateAll()"
+                        class="w-full pl-3 pr-8 py-1.5 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:border-nta-600">
+                      <span class="absolute right-2.5 top-1.5 text-xs text-slate-400">円</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400">※特定支出額の合計が給与所得控除額の1/2を超える場合の超過額</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 2: Other Income Input -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="bg-slate-800 text-white px-5 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-full bg-white text-slate-800 font-bold text-xs flex items-center justify-center">2</span>
+              <h2 class="font-bold text-base sm:text-lg">② 給与所得以外の所得の合計額</h2>
+            </div>
+            <span class="text-xs bg-slate-700 px-2.5 py-1 rounded-full text-slate-200">
+              副業・年金・不動産・配当など
+            </span>
+          </div>
+
+          <div class="p-5 sm:p-6 space-y-4">
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              給与以外の所得（雑所得・事業所得・不動産所得・配当所得・一時所得など）がある場合は、<strong>「収入金額 － 必要経費」で計算した後の所得金額</strong>を入力してください（ない場合は0円のまま）。
+            </p>
+
+            <div>
+              <label for="otherIncomeInputDisplay" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                ② 給与所得以外の所得の合計額
+              </label>
+              <div class="relative flex items-center">
+                <span class="absolute left-4 text-slate-400 font-bold text-lg select-none">¥</span>
+                <input
+                  type="text"
+                  id="otherIncomeInputDisplay"
+                  inputmode="numeric"
+                  value="0"
+                  placeholder="0"
+                  oninput="handleFormattedInput(this, 'other')"
+                  onblur="formatInputOnBlur(this, 'other')"
+                  class="w-full pl-10 pr-24 py-3 text-xl sm:text-2xl font-bold text-slate-900 bg-slate-50 border-2 border-slate-300 rounded-xl focus:outline-none focus:border-nta-600 focus:bg-white transition-all font-mono"
+                >
+                <div class="absolute right-3 flex items-center gap-1.5">
+                  <button type="button" onclick="clearOtherIncome()" title="0に戻す" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/60 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                  <span class="text-base font-bold text-slate-600 pr-1">円</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Collapsible Mini Calculator for Other Income (Revenue - Expenses) -->
+            <div class="border border-slate-200 rounded-xl bg-slate-50/70 overflow-hidden">
+              <button
+                type="button"
+                onclick="toggleAccordion('otherIncomeCalcBox', 'otherIncomeCalcChevron')"
+                class="w-full px-4 py-3 flex items-center justify-between text-left text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-100 transition"
+              >
+                <span class="flex items-center gap-2">
+                  <i class="fa-solid fa-receipt text-nta-600"></i>
+                  副業の「収入と必要経費」から所得を計算するミニ電卓
+                </span>
+                <i id="otherIncomeCalcChevron" class="fa-solid fa-chevron-down text-xs text-slate-500 transition-transform duration-200"></i>
+              </button>
+
+              <div id="otherIncomeCalcBox" class="hidden px-4 pb-4 pt-2 border-t border-slate-200 space-y-3 bg-white">
+                <p class="text-xs text-slate-500">
+                  副業（雑所得・業務）や個人事業の売上（収入）と必要経費を入力すると、差し引きの所得金額を計算します。
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">副業等の総収入金額（売上）</label>
+                    <div class="relative">
+                      <input type="number" id="sideGrossInput" value="250000" min="0" step="1000" oninput="updateOtherMiniCalc()"
+                        class="w-full pl-3 pr-8 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:border-nta-600">
+                      <span class="absolute right-2.5 top-2 text-xs text-slate-400">円</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">必要経費の合計額</label>
+                    <div class="relative">
+                      <input type="number" id="sideExpenseInput" value="70000" min="0" step="1000" oninput="updateOtherMiniCalc()"
+                        class="w-full pl-3 pr-8 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:border-nta-600">
+                      <span class="absolute right-2.5 top-2 text-xs text-slate-400">円</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                  <div class="text-xs text-slate-600">
+                    差し引き所得金額：<strong id="sideNetPreview" class="text-base font-mono text-nta-800">180,000</strong> 円
+                  </div>
+                  <button type="button" onclick="applyOtherMiniCalc()"
+                    class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> ② 給与所得以外の所得に反映する
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 3: Step-by-Step Transparent Calculation Process -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="px-5 py-3.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+            <h3 class="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-magnifying-glass-chart text-nta-600"></i>
+              <span>国税庁ルールに基づく計算過程（端数処理・数式の内訳）</span>
+            </h3>
+            <span id="calcMethodBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-nta-100 text-nta-800">
+              端数処理：A÷4 千円未満切捨
+            </span>
+          </div>
+
+          <div class="p-5 space-y-4">
+            <!-- Step 1: Salary Income Formula -->
+            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200/80 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-nta-800 bg-nta-100 px-2.5 py-0.5 rounded">
+                  STEP 1：給与所得の金額の算出（申告書裏面・速算表）
+                </span>
+                <span id="step1BracketLabel" class="text-xs font-mono text-slate-500"></span>
+              </div>
+              <div id="step1FormulaDetail" class="text-xs sm:text-sm text-slate-700 leading-relaxed space-y-1.5 font-mono bg-white p-3.5 rounded-lg border border-slate-200">
+                <!-- Populated dynamically by JS -->
+              </div>
+            </div>
+
+            <!-- Step 2: Deduction & Total Income -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/80">
+                <div class="text-xs font-bold text-slate-700 mb-1">
+                  STEP 2：給与所得控除額（実質控除額）
+                </div>
+                <div id="step2DeductionDetail" class="text-xs text-slate-600 font-mono">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+              <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/80">
+                <div class="text-xs font-bold text-slate-700 mb-1">
+                  STEP 3：基礎控除額・区分Ⅰの判定
+                </div>
+                <div id="step3JudgmentDetail" class="text-xs text-slate-600">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT COLUMN: OFFICIAL NTA FORM PREVIEW CARD & COMPARISON (5 cols on lg) -->
+      <div class="lg:col-span-5 space-y-6 lg:sticky lg:top-20">
+
+        <!-- Official Tax Declaration Form Mockup Card -->
+        <section class="tax-form-paper rounded-2xl overflow-hidden">
+          <!-- Form Header Bar -->
+          <div class="bg-nta-700 text-white px-5 py-3 flex items-center justify-between">
+            <div>
+              <span id="formPreviewYearTitle" class="text-[11px] font-semibold text-emerald-200 block">
+                令和8年分（2026年分）転記用プレビュー
+              </span>
+              <h2 class="text-base sm:text-lg font-bold tracking-wide">
+                給与所得者の基礎控除申告書
+              </h2>
+            </div>
+            <button
+              type="button"
+              onclick="copyAllSummary()"
+              class="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-xs font-semibold border border-white/25 transition flex items-center gap-1.5"
+            >
+              <i class="fa-regular fa-copy"></i>
+              <span>一括コピー</span>
+            </button>
+          </div>
+
+          <div class="p-4 sm:p-5 space-y-4">
+            <p class="text-xs text-nta-800 bg-nta-50 border border-nta-200 rounded-lg px-3 py-2 flex items-center gap-2">
+              <i class="fa-solid fa-pen-to-square text-nta-600 shrink-0"></i>
+              <span>会社の年末調整書類（またはWeb申告画面）の同じ項目に、以下の金額・記号をそのまま転記してください。</span>
+            </p>
+
+            <!-- Official Table Layout Mockup -->
+            <div class="border-2 tax-form-border rounded-lg overflow-hidden text-xs sm:text-sm">
+              <div class="tax-form-cell-header px-3 py-2 font-bold text-center border-b-2 tax-form-border">
+                あなたの本年中の合計所得金額の見積額の計算
+              </div>
+
+              <!-- Row: (1) Salary Income -->
+              <div class="grid grid-cols-12 border-b tax-form-border">
+                <div class="col-span-12 sm:col-span-5 tax-form-cell-header px-3 py-2.5 font-bold flex items-center border-b sm:border-b-0 sm:border-r tax-form-border">
+                  ① 給与所得の金額
+                </div>
+                <div class="col-span-12 sm:col-span-7 p-2.5 bg-white space-y-2">
+                  <!-- Revenue A -->
+                  <div class="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded border border-slate-200">
+                    <span class="text-[11px] font-semibold text-slate-600">収入金額</span>
+                    <div class="flex items-center gap-1.5">
+                      <span id="formSalaryRevenue" class="font-mono font-bold text-sm sm:text-base text-slate-800">4,500,000</span>
+                      <span class="text-xs text-slate-500">円</span>
+                      <button type="button" onclick="copyValue('rawSalaryRevenue', '給与の収入金額')" title="コピー"
+                        class="ml-1 px-1.5 py-0.5 text-[11px] bg-white hover:bg-nta-50 text-nta-700 border border-slate-200 rounded transition">
+                        <i class="fa-regular fa-copy"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <!-- Income Amount -->
+                  <div class="flex items-center justify-between bg-emerald-50/70 px-2.5 py-2 rounded border-2 border-nta-500">
+                    <span class="text-xs font-bold text-nta-900">所得金額</span>
+                    <div class="flex items-center gap-1.5">
+                      <span id="formSalaryIncome" class="font-mono font-extrabold text-lg sm:text-xl text-nta-800">3,160,000</span>
+                      <span class="text-xs font-bold text-nta-800">円</span>
+                      <button type="button" onclick="copyValue('rawSalaryIncome', '① 給与所得の金額')" title="コピー"
+                        class="ml-1 px-2 py-1 text-xs bg-nta-600 hover:bg-nta-700 text-white rounded font-semibold transition">
+                        コピー
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Row: (2) Other Income -->
+              <div class="grid grid-cols-12 border-b tax-form-border">
+                <div class="col-span-12 sm:col-span-5 tax-form-cell-header px-3 py-2.5 font-bold flex items-center border-b sm:border-b-0 sm:border-r tax-form-border">
+                  ② 給与所得以外の所得の合計額
+                </div>
+                <div class="col-span-12 sm:col-span-7 p-2.5 bg-white flex items-center justify-between">
+                  <span class="text-[11px] text-slate-500">所得金額</span>
+                  <div class="flex items-center gap-1.5">
+                    <span id="formOtherIncome" class="font-mono font-bold text-base sm:text-lg text-slate-800">0</span>
+                    <span class="text-xs text-slate-600">円</span>
+                    <button type="button" onclick="copyValue('rawOtherIncome', '② 給与所得以外の所得の合計額')" title="コピー"
+                      class="ml-1 px-1.5 py-0.5 text-[11px] bg-slate-100 hover:bg-nta-50 text-slate-700 border border-slate-200 rounded transition">
+                      <i class="fa-regular fa-copy"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Row: (3) Total Estimated Income -->
+              <div class="grid grid-cols-12 bg-amber-50/60">
+                <div class="col-span-12 sm:col-span-5 tax-form-cell-header px-3 py-3 font-bold flex items-center border-b sm:border-b-0 sm:border-r tax-form-border">
+                  ③ あなたの本年中の合計所得金額の見積額<br>
+                  <span class="text-[11px] font-normal ml-1">（① ＋ ②）</span>
+                </div>
+                <div class="col-span-12 sm:col-span-7 p-3 flex items-center justify-between bg-amber-50/40">
+                  <span class="text-xs font-bold text-amber-900">①＋②合計</span>
+                  <div class="flex items-center gap-1.5">
+                    <span id="formTotalIncome" class="font-mono font-extrabold text-xl sm:text-2xl text-slate-900">3,160,000</span>
+                    <span class="text-xs font-bold text-slate-700">円</span>
+                    <button type="button" onclick="copyValue('rawTotalIncome', '③ 合計所得金額の見積額')" title="コピー"
+                      class="ml-1 px-2 py-1 text-xs bg-slate-800 hover:bg-slate-900 text-white rounded font-semibold transition">
+                      コピー
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Basic Deduction Amount & Classification I Box -->
+            <div class="border-2 tax-form-border rounded-lg overflow-hidden">
+              <div class="tax-form-cell-header px-3 py-2 font-bold text-center text-xs sm:text-sm border-b-2 tax-form-border">
+                控除額の計算（判定結果）
+              </div>
+
+              <div class="p-3.5 bg-white space-y-3">
+                <!-- Applicable Tier Checkmark Preview -->
+                <div class="bg-nta-50/80 border border-nta-200 rounded-lg p-2.5 flex items-start gap-2.5">
+                  <div class="w-5 h-5 rounded bg-nta-600 text-white flex items-center justify-center text-xs shrink-0 mt-0.5">
+                    <i class="fa-solid fa-check"></i>
+                  </div>
+                  <div class="text-xs">
+                    <span class="text-slate-500 block">該当する合計所得金額の区分：</span>
+                    <strong id="formBracketCheckText" class="text-nta-900 text-sm">
+                      489万円以下（令和8年分）
+                    </strong>
+                  </div>
+                </div>
+
+                <!-- Final Basic Deduction & Classification I -->
+                <div class="grid grid-cols-12 gap-2.5">
+                  <!-- Basic Deduction Box -->
+                  <div class="col-span-8 bg-emerald-50 border-2 border-nta-600 rounded-xl p-3 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-nta-900">基礎控除の額</span>
+                      <button type="button" onclick="copyValue('rawBasicDeduction', '基礎控除の額')"
+                        class="text-[11px] font-semibold text-nta-700 hover:text-nta-900 flex items-center gap-1">
+                        <i class="fa-regular fa-copy"></i> コピー
+                      </button>
+                    </div>
+                    <div class="mt-1.5 flex items-baseline justify-end gap-1">
+                      <span id="formBasicDeduction" class="font-mono font-extrabold text-2xl sm:text-3xl text-nta-800">1,040,000</span>
+                      <span class="text-xs font-bold text-nta-800">円</span>
+                    </div>
+                    <div id="formBasicDeductionManText" class="text-right text-[11px] font-semibold text-nta-600 mt-0.5">
+                      （104万円）
+                    </div>
+                  </div>
+
+                  <!-- Classification I (区分 I) Box -->
+                  <div class="col-span-4 bg-slate-50 border-2 border-slate-300 rounded-xl p-3 flex flex-col justify-between items-center text-center">
+                    <span class="text-[11px] font-bold text-slate-700 leading-tight">
+                      区分Ⅰ<br><span class="text-[10px] font-normal text-slate-500">(配偶者控除用)</span>
+                    </span>
+                    <div id="formKubun1Badge" class="my-1 w-11 h-11 rounded-full bg-nta-700 text-white font-extrabold text-2xl flex items-center justify-center shadow-sm">
+                      A
+                    </div>
+                    <span id="formKubun1Subtext" class="text-[10px] font-medium text-slate-500">
+                      900万円以下
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Multi-Year Comparison Mini Table -->
+            <div class="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+              <div class="px-3.5 py-2 bg-slate-200/70 text-xs font-bold text-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-scale-balanced text-nta-700 mr-1.5"></i>年度別の計算結果比較（税制改正の影響）</span>
+                <span class="text-[11px] font-normal text-slate-500">クリックで年度切替</span>
+              </div>
+              <div class="divide-y divide-slate-200 text-xs">
+                <div class="grid grid-cols-12 px-3 py-1.5 bg-slate-100 font-semibold text-slate-500 text-[11px]">
+                  <div class="col-span-4">対象年分</div>
+                  <div class="col-span-4 text-right">① 給与所得</div>
+                  <div class="col-span-4 text-right">基礎控除額</div>
+                </div>
+                <!-- R8 -->
+                <div onclick="setTaxYear('r8')" id="compRow-r8" class="grid grid-cols-12 px-3 py-2 cursor-pointer hover:bg-nta-50 transition items-center bg-nta-50/90 font-bold text-nta-900">
+                  <div class="col-span-4 flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-nta-600" id="compDot-r8"></span>
+                    <span>令和8年 (2026)</span>
+                  </div>
+                  <div id="compIncome-r8" class="col-span-4 text-right font-mono">3,160,000円</div>
+                  <div id="compBasic-r8" class="col-span-4 text-right font-mono text-nta-700">1,040,000円</div>
+                </div>
+                <!-- R7 -->
+                <div onclick="setTaxYear('r7')" id="compRow-r7" class="grid grid-cols-12 px-3 py-2 cursor-pointer hover:bg-nta-50 transition items-center text-slate-600">
+                  <div class="col-span-4 flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-transparent" id="compDot-r7"></span>
+                    <span>令和7年 (2025)</span>
+                  </div>
+                  <div id="compIncome-r7" class="col-span-4 text-right font-mono">3,160,000円</div>
+                  <div id="compBasic-r7" class="col-span-4 text-right font-mono">680,000円</div>
+                </div>
+                <!-- R6 -->
+                <div onclick="setTaxYear('r6')" id="compRow-r6" class="grid grid-cols-12 px-3 py-2 cursor-pointer hover:bg-nta-50 transition items-center text-slate-600">
+                  <div class="col-span-4 flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-transparent" id="compDot-r6"></span>
+                    <span>令和6年以前</span>
+                  </div>
+                  <div id="compIncome-r6" class="col-span-4 text-right font-mono">3,160,000円</div>
+                  <div id="compBasic-r6" class="col-span-4 text-right font-mono">480,000円</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+
+    <!-- BOTTOM SECTION: NTA OFFICIAL SPEED CALCULATION TABLES (給与所得の速算表 & 基礎控除表) -->
+    <section id="speedTableSection" class="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 bg-slate-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <i class="fa-solid fa-table-list text-emerald-300 text-lg"></i>
+          <h3 class="font-bold text-base sm:text-lg">
+            国税庁「基礎控除申告書 裏面」の計算表（現在適用中の区分をハイライト表示）
+          </h3>
+        </div>
+        <span id="tableYearLabel" class="text-xs bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 px-3 py-1 rounded-full font-semibold self-start sm:self-auto">
+          令和8年分（2026年分）の計算表を表示中
+        </span>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Table 1: Salary Income Calculation Table -->
+        <div class="lg:col-span-7 space-y-3">
+          <h4 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+            <span class="w-2 h-4 bg-nta-600 rounded-sm"></span>
+            <span>① 給与所得の金額の計算表（端数処理含む厳密ルール）</span>
+          </h4>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                  <th class="py-2.5 px-3 font-bold">給与等の収入金額の合計額 (A)</th>
+                  <th class="py-2.5 px-3 font-bold">給与所得の金額の計算式</th>
+                </tr>
+              </thead>
+              <tbody id="salarySpeedTableBody" class="divide-y divide-slate-200">
+                <!-- Populated dynamically based on selected year -->
+              </tbody>
+            </table>
+          </div>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            ※ 計算式中の <strong>「B」</strong> は、収入金額 <strong>A を 4 で割った金額の千円未満の端数を切り捨てた金額</strong>（<code>Math.floor(A / 4000) * 1000</code>）です。国税庁の基礎控除申告書裏面および年末調整等のための給与所得控除後の給与等の金額の表と同じ端数処理を行っています。
+          </p>
+        </div>
+
+        <!-- Table 2: Basic Deduction Table -->
+        <div class="lg:col-span-5 space-y-3">
+          <h4 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+            <span class="w-2 h-4 bg-amber-500 rounded-sm"></span>
+            <span>基礎控除の額の計算表</span>
+          </h4>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                  <th class="py-2.5 px-3 font-bold">③ 合計所得金額の見積額</th>
+                  <th class="py-2.5 px-3 font-bold text-right">基礎控除の額</th>
+                  <th class="py-2.5 px-3 font-bold text-center">区分Ⅰ</th>
+                </tr>
+              </thead>
+              <tbody id="basicDeductionTableBody" class="divide-y divide-slate-200">
+                <!-- Populated dynamically based on selected year -->
+              </tbody>
+            </table>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 space-y-1">
+            <div class="font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-lightbulb text-amber-600"></i>
+              <span>配偶者控除等申告書の「区分Ⅰ」について</span>
+            </div>
+            <p class="leading-relaxed text-amber-800">
+              あなたの合計所得金額（③）が <strong>900万円以下なら「A」</strong>、<strong>900万円超950万円以下なら「B」</strong>、<strong>950万円超1,000万円以下なら「C」</strong> となります。1,000万円を超えると配偶者控除・配偶者特別控除の対象外となります。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 mt-12 py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>
+        国税庁「給与所得者の基礎控除申告書 兼 給与所得者の配偶者控除等申告書 兼 所得金額調整控除申告書」計算ルール準拠
+      </div>
+      <div>
+        ※個別の特殊な税務判断については所轄の税務署または勤務先のご担当者へご確認ください。
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification for Clipboard Copy -->
+  <div id="copyToast" class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-3 transition-all duration-200">
+    <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg border border-slate-700 flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
+      <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+      <span id="copyToastMessage">クリップボードにコピーしました</span>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    // =========================================================================
+    // Application State
+    // =========================================================================
+    const state = {
+      taxYear: 'r8',          // 'r8' (2026), 'r7' (2025), 'r6' (2020-2024)
+      salaryRevenue: 4500000, // ① 給与等の収入金額 A
+      otherIncome: 0,         // ② 給与所得以外の所得の合計額
+      // Store raw computed numbers for one-click copy
+      computed: {
+        rawSalaryRevenue: 4500000,
+        rawSalaryIncome: 3160000,
+        rawOtherIncome: 0,
+        rawTotalIncome: 3160000,
+        rawBasicDeduction: 1040000,
+        kubun1: 'A'
+      }
+    };
+
+    // =========================================================================
+    // NTA Strict Calculation Logic
+    // =========================================================================
+
+    /**
+     * Calculate Salary Income (給与所得の金額) before 所得金額調整控除 / 特定支出控除
+     * Strictly follows the back of the NTA Basic Deduction Declaration Form.
+     */
+    function calculateBaseSalaryIncome(A, year) {
+      A = Math.max(0, Math.floor(Number(A) || 0));
+      // B = A divided by 4, rounded down to the nearest 1,000 yen
+      const B = Math.floor(A / 4000) * 1000;
+
+      if (year === 'r8') {
+        // 令和8年分 (2026年分)
+        if (A <= 740999) {
+          return {
+            income: 0,
+            B: null,
+            bracketIndex: 0,
+            bracketLabel: '740,999円以下',
+            formulaText: `収入金額 ${formatYen(A)}円 ≦ 740,999円 のため、給与所得の金額は 0円 です。`
+          };
+        } else if (A <= 2190999) {
+          const income = A - 740000;
+          return {
+            income,
+            B: null,
+            bracketIndex: 1,
+            bracketLabel: '741,000円 〜 2,190,999円',
+            formulaText: `${formatYen(A)}円 － 740,000円 ＝ ${formatYen(income)}円`
+          };
+        } else if (A <= 2192999) {
+          return {
+            income: 1451000,
+            B: null,
+            bracketIndex: 2,
+            bracketLabel: '2,191,000円 〜 2,192,999円',
+            formulaText: `特定収入区間（2,191,000円〜2,192,999円）のため、定額 1,451,000円`
+          };
+        } else if (A <= 2195999) {
+          return {
+            income: 1453000,
+            B: null,
+            bracketIndex: 3,
+            bracketLabel: '2,193,000円 〜 2,195,999円',
+            formulaText: `特定収入区間（2,193,000円〜2,195,999円）のため、定額 1,453,000円`
+          };
+        } else if (A <= 2199999) {
+          return {
+            income: 1456000,
+            B: null,
+            bracketIndex: 4,
+            bracketLabel: '2,196,000円 〜 2,199,999円',
+            formulaText: `特定収入区間（2,196,000円〜2,199,999円）のため、定額 1,456,000円`
+          };
+        } else if (A <= 3599999) {
+          const income = Math.round(B * 2.8 - 80000);
+          return {
+            income,
+            B,
+            bracketIndex: 5,
+            bracketLabel: '2,200,000円 〜 3,599,999円',
+            formulaText: `① A÷4 ＝ ${formatYen(Math.floor(A / 4))}円 → 千円未満切捨で B ＝ ${formatYen(B)}円\n② B × 2.8 － 80,000円 ＝ ${formatYen(B)} × 2.8 － 80,000 ＝ ${formatYen(income)}円`
+          };
+        } else if (A <= 6599999) {
+          const income = Math.round(B * 3.2 - 440000);
+          return {
+            income,
+            B,
+            bracketIndex: 6,
+            bracketLabel: '3,600,000円 〜 6,599,999円',
+            formulaText: `① A÷4 ＝ ${formatYen(Math.floor(A / 4))}円 → 千円未満切捨で B ＝ ${formatYen(B)}円\n② B × 3.2 － 440,000円 ＝ ${formatYen(B)} × 3.2 － 440,000 ＝ ${formatYen(income)}円`
+          };
+        } else if (A <= 8499999) {
+          const income = Math.floor((A * 9) / 10) - 1100000;
+          return {
+            income,
+            B: null,
+            bracketIndex: 7,
+            bracketLabel: '6,600,000円 〜 8,499,999円',
+            formulaText: `${formatYen(A)}円 × 0.9 － 1,100,000円（1円未満切捨） ＝ ${formatYen(income)}円`
+          };
+        } else {
+          const income = A - 1950000;
+          return {
+            income,
+            B: null,
+            bracketIndex: 8,
+            bracketLabel: '8,500,000円以上',
+            formulaText: `${formatYen(A)}円 － 1,950,000円（上限控除額） ＝ ${formatYen(income)}円`
+          };
+        }
+      } else if (year === 'r7') {
+        // 令和7年分 (2025年分)
+        if (A <= 650999) {
+          return {
+            income: 0,
+            B: null,
+            bracketIndex: 0,
+            bracketLabel: '650,999円以下',
+            formulaText: `収入金額 ${formatYen(A)}円 ≦ 650,999円 のため、給与所得の金額は 0円 です。`
+          };
+        } else if (A <= 1899999) {
+          const income = A - 650000;
+          return {
+            income,
+            B: null,
+            bracketIndex: 1,
+            bracketLabel: '651,000円 〜 1,899,999円',
+            formulaText: `${formatYen(A)}円 － 650,000円 ＝ ${formatYen(income)}円`
+          };
+        } else if (A <= 3599999) {
+          const income = Math.round(B * 2.8 - 80000);
+          return {
+            income,
+            B,
+            bracketIndex: 2,
+            bracketLabel: '1,900,000円 〜 3,599,999円',
+            formulaText: `① A÷4 ＝ ${formatYen(Math.floor(A / 4))}円 → 千円未満切捨で B ＝ ${formatYen(B)}円\n② B × 2.8 － 80,000円 ＝ ${formatYen(B)} × 2.8 － 80,000 ＝ ${formatYen(income)}円`
+          };
+        } else if (A <= 6599999) {
+          const income = Math.round(B * 3.2 - 440000);
+          return {
+            income,
+            B,
+            bracketIndex: 3,
+            bracketLabel: '3,600,000円 〜 6,599,999円',
+            formulaText: `① A÷4 ＝ ${formatYen(Math.floor(A / 4))}円 → 千円未満切捨で B ＝ ${formatYen(B)}円\n② B × 3.2 － 440,000円 ＝ ${formatYen(B)} × 3.2 － 440,000 ＝ ${formatYen(income)}円`
+          };
+        } else if (A <= 8499999) {
+          const income = Math.floor((A * 9) / 10) - 1100000;
+          return {
+            income,
+            B: null,
+            bracketIndex: 4,
+            bracketLabel: '6,600,000円 〜 8,499,999円',
+            formulaText: `${formatYen(A)}円 × 0.9 － 1,100,000円（1円未満切捨） ＝ ${formatYen(income)}円`
+          };
+        } else {
+          const income = A - 1950000;
+          return {
+            income,
+            B: null,
+            bracketIndex: 5,
+            bracketLabel: '8,500,000円以上',
+            formulaText: `${formatYen(A)}円 － 1,950,000円（上限控除額） ＝ ${formatYen(income)}円`
+          };
+        }
+      } else {
+        // 令和6年分以前 (2020〜2024年分)
+        if (A <= 550999) {
+          return {
+            income: 0,
+            B: null,
+            bracketIndex: 0,
+            bracketLabel: '550,999円以下',
+            formulaText: `収入金額 ${formatYen(A)}円 ≦ 550,999円 のため、給与所得の金額は 0円 です。`
+          };
+        } else if (A <= 1618999) {
+          const income = A - 550000;
+          return {
+            income,
+            B: null,
+            bracketIndex: 1,
+            bracketLabel: '551,000円 〜 1,618,999円',
+            formulaText: `${formatYen(A)}円 － 550,000円 ＝ ${formatYen(income)}円`
+          };
+        } else if (A <= 1619999) {
+          return {
+            income: 1069000,
+            B: null,
+            bracketIndex: 2,
+            bracketLabel: '1,619,000円 〜 1,619,999円',
+            formulaText: `特定収入区間（1,619,000円〜1,619,999円）のため、定額 1,069,000円`
+          };
+        } else if (A <= 1621999) {
+          return {
+            income: 1070000,
+            B: null,
+            bracketIndex: 3,
+            bracketLabel: '1,620,000円 〜 1,621,999円',
+            formulaText: `特定収入区間（1,620,000円〜1,621,999円）のため、定額 1,070,000円`
+          };
+        } else if (A <= 1623999) {
+          return {
+            income: 1072000,
+            B: null,
+            bracketIndex: 4,
+            bracketLabel: '1,622,000円 〜 1,623,999円',
+            formulaText: `特定収入区間（1,622,000円〜1,623,999円）のため、定額 1,072,000円`
+          };
+        } else if (A <= 1627999) {
+          return {
+            income: 1074000,
+            B: null,
+            bracketIndex: 5,
+            bracketLabel: '1,624,000円 〜 1,627,999円',
+            formulaText: `特定収入区間（1,624,000円〜1,627,999円）のため、定額 1,074,000円`
+          };
+        } else if (A <= 1799999) {
+          const income = Math.round(B * 2.4 + 100000);
+          return {
+            income,
+            B,
+            bracketIndex: 6,
+            bracketLabel: '1,628,000円 〜 1,799,999円',
+            formulaText: `① A÷4 ＝ ${formatYen(Math.floor(A / 4))}円 → 千円未満切捨で B ＝ ${formatYen(B)}円\n② B × 2.4 ＋ 100,000円 ＝ ${formatYen(B)} × 2.4 ＋ 100,000 ＝ ${formatYen(income)}円`
+          };
+        } else if (A <= 3599999) {
+          const income = Math.round(B * 2.8 - 80000);
+          return {
+            income,
+            B,
+            bracketIndex: 7,
+            bracketLabel: '1,800,000円 〜 3,599,999円',
+            formulaText: `① A÷4 ＝ ${formatYen(Math.floor(A / 4))}円 → 千円未満切捨で B ＝ ${formatYen(B)}円\n② B × 2.8 － 80,000円 ＝ ${formatYen(B)} × 2.8 － 80,000 ＝ ${formatYen(income)}円`
+          };
+        } else if (A <= 6599999) {
+          const income = Math.round(B * 3.2 - 440000);
+          return {
+            income,
+            B,
+            bracketIndex: 8,
+            bracketLabel: '3,600,000円 〜 6,599,999円',
+            formulaText: `① A÷4 ＝ ${formatYen(Math.floor(A / 4))}円 → 千円未満切捨で B ＝ ${formatYen(B)}円\n② B × 3.2 － 440,000円 ＝ ${formatYen(B)} × 3.2 － 440,000 ＝ ${formatYen(income)}円`
+          };
+        } else if (A <= 8499999) {
+          const income = Math.floor((A * 9) / 10) - 1100000;
+          return {
+            income,
+            B: null,
+            bracketIndex: 9,
+            bracketLabel: '6,600,000円 〜 8,499,999円',
+            formulaText: `${formatYen(A)}円 × 0.9 － 1,100,000円（1円未満切捨） ＝ ${formatYen(income)}円`
+          };
+        } else {
+          const income = A - 1950000;
+          return {
+            income,
+            B: null,
+            bracketIndex: 10,
+            bracketLabel: '8,500,000円以上',
+            formulaText: `${formatYen(A)}円 － 1,950,000円（上限控除額） ＝ ${formatYen(income)}円`
+          };
+        }
+      }
+    }
+
+    /**
+     * Calculate Basic Deduction (基礎控除の額) and Classification I (区分I)
+     */
+    function calculateBasicDeduction(totalIncome, year) {
+      let amount = 0;
+      let bracketLabel = '';
+      let rowIndex = 0;
+
+      if (year === 'r8') {
+        if (totalIncome <= 4890000) {
+          amount = 1040000;
+          bracketLabel = '489万円以下';
+          rowIndex = 0;
+        } else if (totalIncome <= 6550000) {
+          amount = 670000;
+          bracketLabel = '489万円超 655万円以下';
+          rowIndex = 1;
+        } else if (totalIncome <= 23500000) {
+          amount = 620000;
+          bracketLabel = '655万円超 2,350万円以下';
+          rowIndex = 2;
+        } else if (totalIncome <= 24000000) {
+          amount = 480000;
+          bracketLabel = '2,350万円超 2,400万円以下';
+          rowIndex = 3;
+        } else if (totalIncome <= 24500000) {
+          amount = 320000;
+          bracketLabel = '2,400万円超 2,450万円以下';
+          rowIndex = 4;
+        } else if (totalIncome <= 25000000) {
+          amount = 160000;
+          bracketLabel = '2,450万円超 2,500万円以下';
+          rowIndex = 5;
+        } else {
+          amount = 0;
+          bracketLabel = '2,500万円超（基礎控除の適用なし）';
+          rowIndex = 6;
+        }
+      } else if (year === 'r7') {
+        if (totalIncome <= 1320000) {
+          amount = 950000;
+          bracketLabel = '132万円以下';
+          rowIndex = 0;
+        } else if (totalIncome <= 3360000) {
+          amount = 880000;
+          bracketLabel = '132万円超 336万円以下';
+          rowIndex = 1;
+        } else if (totalIncome <= 4890000) {
+          amount = 680000;
+          bracketLabel = '336万円超 489万円以下';
+          rowIndex = 2;
+        } else if (totalIncome <= 6550000) {
+          amount = 630000;
+          bracketLabel = '489万円超 655万円以下';
+          rowIndex = 3;
+        } else if (totalIncome <= 23500000) {
+          amount = 580000;
+          bracketLabel = '655万円超 2,350万円以下';
+          rowIndex = 4;
+        } else if (totalIncome <= 24000000) {
+          amount = 480000;
+          bracketLabel = '2,350万円超 2,400万円以下';
+          rowIndex = 5;
+        } else if (totalIncome <= 24500000) {
+          amount = 320000;
+          bracketLabel = '2,400万円超 2,450万円以下';
+          rowIndex = 6;
+        } else if (totalIncome <= 25000000) {
+          amount = 160000;
+          bracketLabel = '2,450万円超 2,500万円以下';
+          rowIndex = 7;
+        } else {
+          amount = 0;
+          bracketLabel = '2,500万円超（基礎控除の適用なし）';
+          rowIndex = 8;
+        }
+      } else {
+        // R6 and earlier
+        if (totalIncome <= 24000000) {
+          amount = 480000;
+          bracketLabel = '2,400万円以下';
+          rowIndex = 0;
+        } else if (totalIncome <= 24500000) {
+          amount = 320000;
+          bracketLabel = '2,400万円超 2,450万円以下';
+          rowIndex = 1;
+        } else if (totalIncome <= 25000000) {
+          amount = 160000;
+          bracketLabel = '2,450万円超 2,500万円以下';
+          rowIndex = 2;
+        } else {
+          amount = 0;
+          bracketLabel = '2,500万円超（基礎控除の適用なし）';
+          rowIndex = 3;
+        }
+      }
+
+      // Classification I (区分I) for Spouse Deduction Declaration
+      let kubun1 = '―';
+      let kubun1Desc = '1,000万円超（対象外）';
+      if (totalIncome <= 9000000) {
+        kubun1 = 'A';
+        kubun1Desc = '900万円以下';
+      } else if (totalIncome <= 9500000) {
+        kubun1 = 'B';
+        kubun1Desc = '900万超〜950万円以下';
+      } else if (totalIncome <= 10000000) {
+        kubun1 = 'C';
+        kubun1Desc = '950万超〜1,000万円以下';
+      }
+
+      return { amount, bracketLabel, rowIndex, kubun1, kubun1Desc };
+    }
+
+    /**
+     * Full calculation for a given year including 所得金額調整控除 and 特定支出控除
+     */
+    function computeForYear(year) {
+      const A = state.salaryRevenue;
+      const baseCalc = calculateBaseSalaryIncome(A, year);
+
+      // 1. 子ども・特別障害者等を有する者等の所得金額調整控除
+      const applyChildSpecial = document.getElementById('childSpecialDeductionCheck').checked;
+      let childSpecialDeduction = 0;
+      if (applyChildSpecial && A > 8500000) {
+        const cappedA = Math.min(A, 10000000);
+        // 1円未満の端数があるときは、その端数を切り上げる
+        childSpecialDeduction = Math.ceil((cappedA - 8500000) * 0.1);
+      }
+
+      // 2. 公的年金等に係る所得金額調整控除 & 特定支出控除
+      const pensionAdj = Math.max(0, Math.min(100000, Math.floor(Number(document.getElementById('pensionAdjustmentInput').value) || 0)));
+      const specificExp = Math.max(0, Math.floor(Number(document.getElementById('specificExpenseInput').value) || 0));
+
+      const totalAdjustment = childSpecialDeduction + pensionAdj + specificExp;
+      const finalSalaryIncome = Math.max(0, baseCalc.income - totalAdjustment);
+      const totalIncome = finalSalaryIncome + state.otherIncome;
+      const basicRes = calculateBasicDeduction(totalIncome, year);
+
+      return {
+        A,
+        baseCalc,
+        childSpecialDeduction,
+        pensionAdj,
+        specificExp,
+        totalAdjustment,
+        finalSalaryIncome,
+        otherIncome: state.otherIncome,
+        totalIncome,
+        basicRes
+      };
+    }
+
+    // =========================================================================
+    // UI Update & Rendering
+    // =========================================================================
+
+    function recalculateAll() {
+      const currentRes = computeForYear(state.taxYear);
+      const r8Res = computeForYear('r8');
+      const r7Res = computeForYear('r7');
+      const r6Res = computeForYear('r6');
+
+      // Save raw values for copy buttons
+      state.computed.rawSalaryRevenue = currentRes.A;
+      state.computed.rawSalaryIncome = currentRes.finalSalaryIncome;
+      state.computed.rawOtherIncome = currentRes.otherIncome;
+      state.computed.rawTotalIncome = currentRes.totalIncome;
+      state.computed.rawBasicDeduction = currentRes.basicRes.amount;
+      state.computed.kubun1 = currentRes.basicRes.kubun1;
+
+      // Update Man-Yen reading helper
+      document.getElementById('salaryManYenReading').textContent = formatManYenReading(currentRes.A);
+
+      // Update Eligibility Badge for 所得金額調整控除
+      const eligBadge = document.getElementById('adjustmentEligibilityBadge');
+      if (currentRes.A > 8500000) {
+        const potentialDed = Math.ceil((Math.min(currentRes.A, 10000000) - 8500000) * 0.1);
+        eligBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-nta-800 border border-emerald-300';
+        eligBadge.textContent = `対象年収（控除額: ${formatYen(potentialDed)}円）`;
+      } else {
+        eligBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-600';
+        eligBadge.textContent = '年収850万円超で対象（現在850万円以下）';
+      }
+
+      // Update Official Form Preview Card
+      document.getElementById('formSalaryRevenue').textContent = formatYen(currentRes.A);
+      document.getElementById('formSalaryIncome').textContent = formatYen(currentRes.finalSalaryIncome);
+      document.getElementById('formOtherIncome').textContent = formatYen(currentRes.otherIncome);
+      document.getElementById('formTotalIncome').textContent = formatYen(currentRes.totalIncome);
+
+      const yearNameMap = {
+        r8: '令和8年分（2026年分）',
+        r7: '令和7年分（2025年分）',
+        r6: '令和6年分以前（〜2024年分）'
+      };
+      document.getElementById('formPreviewYearTitle').textContent = `${yearNameMap[state.taxYear]} 転記用プレビュー`;
+      document.getElementById('formBracketCheckText').textContent = `${currentRes.basicRes.bracketLabel}（${yearNameMap[state.taxYear]}）`;
+      document.getElementById('formBasicDeduction').textContent = formatYen(currentRes.basicRes.amount);
+      document.getElementById('formBasicDeductionManText').textContent = currentRes.basicRes.amount > 0
+        ? `（${currentRes.basicRes.amount / 10000}万円）`
+        : '（控除対象外）';
+
+      // Kubun I Badge
+      const kubunBadge = document.getElementById('formKubun1Badge');
+      kubunBadge.textContent = currentRes.basicRes.kubun1;
+      if (currentRes.basicRes.kubun1 === '―') {
+        kubunBadge.className = 'my-1 w-11 h-11 rounded-full bg-slate-300 text-slate-600 font-extrabold text-xl flex items-center justify-center';
+      } else {
+        kubunBadge.className = 'my-1 w-11 h-11 rounded-full bg-nta-700 text-white font-extrabold text-2xl flex items-center justify-center shadow-sm';
+      }
+      document.getElementById('formKubun1Subtext').textContent = currentRes.basicRes.kubun1Desc;
+
+      // Update Step-by-Step Formula Breakdown
+      document.getElementById('step1BracketLabel').textContent = `適用区分: ${currentRes.baseCalc.bracketLabel}`;
+      let step1Html = `<div class="whitespace-pre-line">${escapeHtml(currentRes.baseCalc.formulaText)}</div>`;
+      if (currentRes.totalAdjustment > 0) {
+        step1Html += `<div class="mt-2 pt-2 border-t border-slate-200 text-nta-800 font-bold">`;
+        if (currentRes.childSpecialDeduction > 0) {
+          step1Html += `・所得金額調整控除（子ども・特別障害者等）：－${formatYen(currentRes.childSpecialDeduction)}円<br>`;
+        }
+        if (currentRes.pensionAdj > 0) {
+          step1Html += `・所得金額調整控除（公的年金等双方受給）：－${formatYen(currentRes.pensionAdj)}円<br>`;
+        }
+        if (currentRes.specificExp > 0) {
+          step1Html += `・特定支出控除額：－${formatYen(currentRes.specificExp)}円<br>`;
+        }
+        step1Html += `⇒ 控除後の①給与所得の金額：${formatYen(currentRes.finalSalaryIncome)}円</div>`;
+      }
+      document.getElementById('step1FormulaDetail').innerHTML = step1Html;
+
+      const effectiveDeduction = Math.max(0, currentRes.A - currentRes.finalSalaryIncome);
+      document.getElementById('step2DeductionDetail').innerHTML =
+        `収入 ${formatYen(currentRes.A)}円 － 給与所得 ${formatYen(currentRes.finalSalaryIncome)}円<br>` +
+        `＝ <strong class="text-nta-700">実質控除額 ${formatYen(effectiveDeduction)}円</strong>`;
+
+      document.getElementById('step3JudgmentDetail').innerHTML =
+        `合計所得③ <strong class="font-mono">${formatYen(currentRes.totalIncome)}円</strong> は「${currentRes.basicRes.bracketLabel}」に該当するため、基礎控除は <strong class="text-nta-700 font-mono">${formatYen(currentRes.basicRes.amount)}円</strong>、区分Ⅰは <strong>「${currentRes.basicRes.kubun1}」</strong> です。`;
+
+      // Update Comparison Rows
+      document.getElementById('compIncome-r8').textContent = `${formatYen(r8Res.finalSalaryIncome)}円`;
+      document.getElementById('compBasic-r8').textContent = `${formatYen(r8Res.basicRes.amount)}円`;
+      document.getElementById('compIncome-r7').textContent = `${formatYen(r7Res.finalSalaryIncome)}円`;
+      document.getElementById('compBasic-r7').textContent = `${formatYen(r7Res.basicRes.amount)}円`;
+      document.getElementById('compIncome-r6').textContent = `${formatYen(r6Res.finalSalaryIncome)}円`;
+      document.getElementById('compBasic-r6').textContent = `${formatYen(r6Res.basicRes.amount)}円`;
+
+      // Render Speed Calculation Tables with Active Row Highlight
+      renderSpeedTables(state.taxYear, currentRes.baseCalc.bracketIndex, currentRes.basicRes.rowIndex);
+    }
+
+    /**
+     * Render the NTA Speed Calculation Tables at the bottom and highlight active brackets
+     */
+    function renderSpeedTables(year, activeSalaryIndex, activeBasicIndex) {
+      const salaryTables = {
+        r8: [
+          ['740,999円以下', '0円'],
+          ['741,000円 〜 2,190,999円', 'A － 740,000円'],
+          ['2,191,000円 〜 2,192,999円', '1,451,000円（定額）'],
+          ['2,193,000円 〜 2,195,999円', '1,453,000円（定額）'],
+          ['2,196,000円 〜 2,199,999円', '1,456,000円（定額）'],
+          ['2,200,000円 〜 3,599,999円', 'B × 2.8 － 80,000円'],
+          ['3,600,000円 〜 6,599,999円', 'B × 3.2 － 440,000円'],
+          ['6,600,000円 〜 8,499,999円', 'A × 0.9 － 1,100,000円（1円未満切捨）'],
+          ['8,500,000円以上', 'A － 1,950,000円']
+        ],
+        r7: [
+          ['650,999円以下', '0円'],
+          ['651,000円 〜 1,899,999円', 'A － 650,000円'],
+          ['1,900,000円 〜 3,599,999円', 'B × 2.8 － 80,000円'],
+          ['3,600,000円 〜 6,599,999円', 'B × 3.2 － 440,000円'],
+          ['6,600,000円 〜 8,499,999円', 'A × 0.9 － 1,100,000円（1円未満切捨）'],
+          ['8,500,000円以上', 'A － 1,950,000円']
+        ],
+        r6: [
+          ['550,999円以下', '0円'],
+          ['551,000円 〜 1,618,999円', 'A － 550,000円'],
+          ['1,619,000円 〜 1,619,999円', '1,069,000円（定額）'],
+          ['1,620,000円 〜 1,621,999円', '1,070,000円（定額）'],
+          ['1,622,000円 〜 1,623,999円', '1,072,000円（定額）'],
+          ['1,624,000円 〜 1,627,999円', '1,074,000円（定額）'],
+          ['1,628,000円 〜 1,799,999円', 'B × 2.4 ＋ 100,000円'],
+          ['1,800,000円 〜 3,599,999円', 'B × 2.8 － 80,000円'],
+          ['3,600,000円 〜 6,599,999円', 'B × 3.2 － 440,000円'],
+          ['6,600,000円 〜 8,499,999円', 'A × 0.9 － 1,100,000円（1円未満切捨）'],
+          ['8,500,000円以上', 'A － 1,950,000円']
+        ]
+      };
+
+      const basicTables = {
+        r8: [
+          ['489万円以下', '1,040,000円 (104万円)', 'A'],
+          ['489万円超 655万円以下', '670,000円 (67万円)', 'A'],
+          ['655万円超 2,350万円以下', '620,000円 (62万円)', 'A / B / C / ―'],
+          ['2,350万円超 2,400万円以下', '480,000円 (48万円)', '―'],
+          ['2,400万円超 2,450万円以下', '320,000円 (32万円)', '―'],
+          ['2,450万円超 2,500万円以下', '160,000円 (16万円)', '―'],
+          ['2,500万円超', '0円 (適用なし)', '―']
+        ],
+        r7: [
+          ['132万円以下', '950,000円 (95万円)', 'A'],
+          ['132万円超 336万円以下', '880,000円 (88万円)', 'A'],
+          ['336万円超 489万円以下', '680,000円 (68万円)', 'A'],
+          ['489万円超 655万円以下', '630,000円 (63万円)', 'A'],
+          ['655万円超 2,350万円以下', '580,000円 (58万円)', 'A / B / C / ―'],
+          ['2,350万円超 2,400万円以下', '480,000円 (48万円)', '―'],
+          ['2,400万円超 2,450万円以下', '320,000円 (32万円)', '―'],
+          ['2,450万円超 2,500万円以下', '160,000円 (16万円)', '―'],
+          ['2,500万円超', '0円 (適用なし)', '―']
+        ],
+        r6: [
+          ['2,400万円以下', '480,000円 (48万円)', 'A / B / C / ―'],
+          ['2,400万円超 2,450万円以下', '320,000円 (32万円)', '―'],
+          ['2,450万円超 2,500万円以下', '160,000円 (16万円)', '―'],
+          ['2,500万円超', '0円 (適用なし)', '―']
+        ]
+      };
+
+      const salaryBody = document.getElementById('salarySpeedTableBody');
+      salaryBody.innerHTML = salaryTables[year].map((row, idx) => {
+        const isActive = idx === activeSalaryIndex;
+        return `
+          <tr class="${isActive ? 'active-bracket-row' : 'hover:bg-slate-50'}">
+            <td class="py-2 px-3 font-mono ${isActive ? 'text-amber-900' : 'text-slate-700'}">
+              ${isActive ? '<i class="fa-solid fa-caret-right text-amber-600 mr-1.5"></i>' : ''}${row[0]}
+            </td>
+            <td class="py-2 px-3 font-mono ${isActive ? 'text-amber-900' : 'text-slate-600'}">${row[1]}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const basicBody = document.getElementById('basicDeductionTableBody');
+      basicBody.innerHTML = basicTables[year].map((row, idx) => {
+        const isActive = idx === activeBasicIndex;
+        return `
+          <tr class="${isActive ? 'active-bracket-row' : 'hover:bg-slate-50'}">
+            <td class="py-2 px-3 ${isActive ? 'text-amber-900' : 'text-slate-700'}">
+              ${isActive ? '<i class="fa-solid fa-caret-right text-amber-600 mr-1.5"></i>' : ''}${row[0]}
+            </td>
+            <td class="py-2 px-3 text-right font-mono ${isActive ? 'text-amber-900' : 'text-slate-700'}">${row[1]}</td>
+            <td class="py-2 px-3 text-center font-mono text-xs ${isActive ? 'text-amber-900' : 'text-slate-500'}">${row[2]}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // Event Handlers & Helpers
+    // =========================================================================
+
+    function setTaxYear(year) {
+      state.taxYear = year;
+
+      // Update Header Tab Buttons
+      ['r8', 'r7', 'r6'].forEach(y => {
+        const btn = document.getElementById(`yearBtn-${y}`);
+        const compRow = document.getElementById(`compRow-${y}`);
+        const compDot = document.getElementById(`compDot-${y}`);
+        if (y === year) {
+          btn.className = 'year-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-nta-800 shadow-sm';
+          compRow.className = 'grid grid-cols-12 px-3 py-2 cursor-pointer transition items-center bg-nta-50/90 font-bold text-nta-900';
+          compDot.className = 'w-2 h-2 rounded-full bg-nta-600';
+        } else {
+          btn.className = 'year-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-emerald-100 hover:text-white';
+          compRow.className = 'grid grid-cols-12 px-3 py-2 cursor-pointer hover:bg-nta-50 transition items-center text-slate-600';
+          compDot.className = 'w-2 h-2 rounded-full bg-transparent';
+        }
+      });
+
+      const badge = document.getElementById('headerYearBadge');
+      const bannerText = document.getElementById('yearRuleBannerText');
+      const tableYearLabel = document.getElementById('tableYearLabel');
+
+      if (year === 'r8') {
+        badge.textContent = '令和8年分（2026年）最新改正対応';
+        badge.className = 'text-xs font-bold bg-amber-400 text-slate-900 px-2 py-0.5 rounded-md';
+        bannerText.innerHTML = '<strong>【令和8年分（2026年）の計算ルール適用中】</strong> 給与所得控除の最低保障額が<strong>74万円</strong>、基礎控除が最大<strong>104万円</strong>（合計所得489万円以下）に引き上げられた最新計算表で算出しています。';
+        tableYearLabel.textContent = '令和8年分（2026年分）の計算表を表示中';
+      } else if (year === 'r7') {
+        badge.textContent = '令和7年分（2025年）対応';
+        badge.className = 'text-xs font-bold bg-sky-300 text-slate-900 px-2 py-0.5 rounded-md';
+        bannerText.innerHTML = '<strong>【令和7年分（2025年）の計算ルール適用中】</strong> 給与所得控除の最低保障額が<strong>65万円</strong>、基礎控除が最大<strong>95万円</strong>（合計所得132万円以下）の令和7年分計算表で算出しています。';
+        tableYearLabel.textContent = '令和7年分（2025年分）の計算表を表示中';
+      } else {
+        badge.textContent = '令和6年分以前（2020〜2024年）';
+        badge.className = 'text-xs font-bold bg-slate-300 text-slate-900 px-2 py-0.5 rounded-md';
+        bannerText.innerHTML = '<strong>【令和6年分以前（2020〜2024年）の計算ルール適用中】</strong> 給与所得控除の最低保障額が<strong>55万円</strong>、基礎控除が最大<strong>48万円</strong>（合計所得2,400万円以下一律）の計算表で算出しています。';
+        tableYearLabel.textContent = '令和6年分以前（2020〜2024年分）の計算表を表示中';
+      }
+
+      recalculateAll();
+    }
+
+    function handleFormattedInput(inputEl, type) {
+      // Strip non-digits
+      const rawDigits = inputEl.value.replace(/[^0-9]/g, '');
+      const numericVal = rawDigits === '' ? 0 : parseInt(rawDigits, 10);
+
+      if (type === 'salary') {
+        state.salaryRevenue = numericVal;
+        document.getElementById('salarySlider').value = Math.min(numericVal, 12000000);
+      } else {
+        state.otherIncome = numericVal;
+      }
+
+      recalculateAll();
+    }
+
+    function formatInputOnBlur(inputEl, type) {
+      const val = type === 'salary' ? state.salaryRevenue : state.otherIncome;
+      inputEl.value = formatYen(val);
+    }
+
+    function handleSliderChange(val) {
+      const num = parseInt(val, 10) || 0;
+      state.salaryRevenue = num;
+      document.getElementById('salaryInputDisplay').value = formatYen(num);
+      recalculateAll();
+    }
+
+    function setSalary(amount) {
+      state.salaryRevenue = amount;
+      document.getElementById('salaryInputDisplay').value = formatYen(amount);
+      document.getElementById('salarySlider').value = Math.min(amount, 12000000);
+      recalculateAll();
+    }
+
+    function clearSalary() {
+      setSalary(0);
+      document.getElementById('salaryInputDisplay').focus();
+    }
+
+    function clearOtherIncome() {
+      state.otherIncome = 0;
+      document.getElementById('otherIncomeInputDisplay').value = '0';
+      recalculateAll();
+    }
+
+    // Annual Salary Estimator Helper
+    function updateSalaryEstimator() {
+      const monthly = Math.max(0, parseInt(document.getElementById('estMonthly').value, 10) || 0);
+      const months = Math.max(1, Math.min(12, parseInt(document.getElementById('estMonths').value, 10) || 12));
+      const bonus = Math.max(0, parseInt(document.getElementById('estBonus').value, 10) || 0);
+      const total = monthly * months + bonus;
+      document.getElementById('estTotalPreview').textContent = formatYen(total);
+      return total;
+    }
+
+    function applyEstimatedSalary() {
+      const total = updateSalaryEstimator();
+      setSalary(total);
+      showToast(`試算した年収 ${formatYen(total)}円 を収入金額に反映しました`);
+    }
+
+    // Other Income Mini Calculator Helper
+    function updateOtherMiniCalc() {
+      const gross = Math.max(0, parseInt(document.getElementById('sideGrossInput').value, 10) || 0);
+      const expense = Math.max(0, parseInt(document.getElementById('sideExpenseInput').value, 10) || 0);
+      const net = Math.max(0, gross - expense);
+      document.getElementById('sideNetPreview').textContent = formatYen(net);
+      return net;
+    }
+
+    function applyOtherMiniCalc() {
+      const net = updateOtherMiniCalc();
+      state.otherIncome = net;
+      document.getElementById('otherIncomeInputDisplay').value = formatYen(net);
+      recalculateAll();
+      showToast(`副業等の所得金額 ${formatYen(net)}円 を②に反映しました`);
+    }
+
+    // Accordion Toggle
+    function toggleAccordion(boxId, chevronId) {
+      const box = document.getElementById(boxId);
+      const chevron = document.getElementById(chevronId);
+      const isHidden = box.classList.contains('hidden');
+      if (isHidden) {
+        box.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+      } else {
+        box.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
+      }
+    }
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    // =========================================================================
+    // Clipboard & Formatting Utilities
+    // =========================================================================
+
+    function formatYen(num) {
+      return Number(num || 0).toLocaleString('ja-JP');
+    }
+
+    function formatManYenReading(num) {
+      if (!num || num === 0) return '0 円';
+      const man = Math.floor(num / 10000);
+      const rem = num % 10000;
+      if (man === 0) return `${formatYen(rem)} 円`;
+      if (rem === 0) return `${formatYen(man)}万 円`;
+      return `${formatYen(man)}万 ${formatYen(rem)} 円`;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function copyTextToClipboard(text, message) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast(message || `「${text}」をコピーしました`);
+      } catch (err) {
+        showToast('コピーに失敗しました');
+      }
+      document.body.removeChild(textarea);
+    }
+
+    function copyValue(key, label) {
+      const val = state.computed[key];
+      copyTextToClipboard(String(val), `${label}（${formatYen(val)}円）をコピーしました`);
+    }
+
+    function copyAllSummary() {
+      const yearLabel = state.taxYear === 'r8' ? '令和8年分(2026)' : (state.taxYear === 'r7' ? '令和7年分(2025)' : '令和6年分以前');
+      const text = [
+        `【給与所得者の基礎控除申告書 計算結果（${yearLabel}）】`,
+        `・① 給与所得の収入金額：${formatYen(state.computed.rawSalaryRevenue)} 円`,
+        `・① 給与所得の金額：${formatYen(state.computed.rawSalaryIncome)} 円`,
+        `・② 給与所得以外の所得の合計額：${formatYen(state.computed.rawOtherIncome)} 円`,
+        `・③ 合計所得金額の見積額：${formatYen(state.computed.rawTotalIncome)} 円`,
+        `・基礎控除の額：${formatYen(state.computed.rawBasicDeduction)} 円`,
+        `・区分Ⅰ（配偶者控除等用）：${state.computed.kubun1}`
+      ].join('\n');
+
+      copyTextToClipboard(text, '申告書の計算結果すべてを一括コピーしました');
+    }
+
+    let toastTimeout = null;
+    function showToast(msg) {
+      const toast = document.getElementById('copyToast');
+      const msgEl = document.getElementById('copyToastMessage');
+      msgEl.textContent = msg;
+      toast.classList.remove('opacity-0', 'translate-y-3');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-3');
+      }, 2600);
+    }
+
+    // Initialize on load
+    window.onload = function () {
+      recalculateAll();
+    };
+  </script>
+</body>
+</html>
